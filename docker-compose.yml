@@ -38,7 +38,7 @@ services:
 
   # WordPress principal (krediagil.com)
   wordpress-main:
-    image: wordpress:latest
+    image: wordpress:6.8.1
     depends_on:
       - db
       - db-init
@@ -63,7 +63,7 @@ services:
 
   # WordPress para agentes (agentes.krediagil.com)
   wordpress-agents:
-    image: wordpress:latest
+    image: wordpress:6.8.1
     depends_on:
       - db
       - db-init
@@ -88,7 +88,7 @@ services:
 
   # WordPress para clientes (clientes.krediagil.com)
   wordpress-clients:
-    image: wordpress:latest
+    image: wordpress:6.8.1
     depends_on:
       - db
       - db-init
@@ -113,7 +113,7 @@ services:
 
   # n8n para workflows
   n8n:
-    image: n8nio/n8n:latest
+    image: n8nio/n8n:1.99.1
     restart: always
     ports:
       - "5678:5678"
