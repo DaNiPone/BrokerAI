@@ -6,10 +6,10 @@ services:
       - db_data:/var/lib/mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: broker_root_password
-      MYSQL_DATABASE: wordpress
-      MYSQL_USER: wordpress
-      MYSQL_PASSWORD: wordpress_password
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD_SIMPLE}
+      MYSQL_DATABASE: ${MYSQL_DATABASE_SIMPLE}
+      MYSQL_USER: ${MYSQL_USER_SIMPLE}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD_SIMPLE}
     networks:
       broker_network:
         aliases:
@@ -17,7 +17,7 @@ services:
 
   # WordPress único en localhost
   wordpress:
-    image: wordpress:latest
+    image: wordpress:6.8.1
     depends_on:
       - db
     volumes:
@@ -26,14 +26,14 @@ services:
       - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
     restart: always
     environment:
-      WORDPRESS_DB_HOST: mysql
-      WORDPRESS_DB_USER: wordpress
-      WORDPRESS_DB_PASSWORD: wordpress_password
-      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_DB_HOST: ${WORDPRESS_DB_HOST_SIMPLE}
+      WORDPRESS_DB_USER: ${WORDPRESS_DB_USER_SIMPLE}
+      WORDPRESS_DB_PASSWORD: ${WORDPRESS_DB_PASSWORD_SIMPLE}
+      WORDPRESS_DB_NAME: ${WORDPRESS_DB_NAME_SIMPLE}
       WORDPRESS_CONFIG_EXTRA: |
-        define('WP_MEMORY_LIMIT', '256M');
-        define('WP_BROKER_WEBHOOK_URL', 'http://n8n-main:5678/webhook/broker-ai/webhook');
-        define('WP_BROKER_WEBHOOK_SECRET', 'broker_webhook_secret');
+        define('WP_MEMORY_LIMIT', '${WP_MEMORY_LIMIT_SIMPLE}');
+        define('WP_BROKER_WEBHOOK_URL', '${WP_BROKER_WEBHOOK_URL_SIMPLE}');
+        define('WP_BROKER_WEBHOOK_SECRET', '${WP_BROKER_WEBHOOK_SECRET_SIMPLE}');
     ports:
       - "8888:80"
     networks:
@@ -43,44 +43,31 @@ services:
 
   # n8n para workflows
   n8n:
-    image: n8nio/n8n:latest
+    image: n8nio/n8n:1.99.1
     restart: always
     ports:
       - "5678:5678"
     volumes:
       - n8n_data:/home/node/.n8n
     environment:
-      - N8N_HOST=localhost
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - N8N_EDITOR_BASE_URL=http://localhost:5678
-      - WEBHOOK_URL=http://localhost:5678
-      - WORDPRESS_URL=http://wordpress-main
-      - WEBHOOK_SECRET=broker_webhook_secret
-      - N8N_DIAGNOSTICS_ENABLED=false
-      - N8N_USER_MANAGEMENT_DISABLED=true
-      - EXECUTIONS_PROCESS=main
-      - GENERIC_TIMEZONE=America/Mexico_City
-      - TZ=America/Mexico_City
+      - N8N_HOST=${N8N_HOST_SIMPLE}
+      - N8N_PORT=${N8N_PORT_SIMPLE}
+      - N8N_PROTOCOL=${N8N_PROTOCOL_SIMPLE}
+      - N8N_EDITOR_BASE_URL=${N8N_EDITOR_BASE_URL_SIMPLE}
+      - WEBHOOK_URL=${WEBHOOK_URL_SIMPLE}
+      - WORDPRESS_URL=${WORDPRESS_URL_SIMPLE}
+      - WEBHOOK_SECRET=${WEBHOOK_SECRET_SIMPLE}
+      - N8N_DIAGNOSTICS_ENABLED=${N8N_DIAGNOSTICS_ENABLED_SIMPLE}
+      - N8N_USER_MANAGEMENT_DISABLED=${N8N_USER_MANAGEMENT_DISABLED_SIMPLE}
+      - EXECUTIONS_PROCESS=${EXECUTIONS_PROCESS_SIMPLE}
+      - GENERIC_TIMEZONE=${GENERIC_TIMEZONE_SIMPLE}
+      - TZ=${TZ_SIMPLE}
     networks:
       broker_network:
         aliases:
           - n8n-main
 
-  # phpMyAdmin para gestión de bases de datos
-  phpmyadmin:
-    image: phpmyadmin/phpmyadmin
-    restart: always
-    depends_on:
-      - db
-    environment:
-      PMA_HOST: mysql
-      PMA_USER: root
-      PMA_PASSWORD: broker_root_password
-    ports:
-      - "8080:80"
-    networks:
-      - broker_network
+  
 
 volumes:
   db_data:
