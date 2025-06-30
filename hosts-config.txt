@@ -1,0 +1,22 @@
+# Configuración del archivo hosts para BrokerAI
+
+Para que el sistema funcione correctamente en local, necesitas añadir las siguientes líneas a tu archivo hosts:
+
+## En Windows
+Edita el archivo: C:\Windows\System32\drivers\etc\hosts
+
+## En macOS/Linux
+Edita el archivo: /etc/hosts
+
+## Añade estas líneas:
+127.0.0.1   krediagil.com
+127.0.0.1   agentes.krediagil.com
+127.0.0.1   clientes.krediagil.com
+
+# Nota importante:
+# En Windows necesitas abrir el editor como administrador para poder modificar este archivo.
+# En macOS/Linux usa 'sudo' para editar el archivo: sudo nano /etc/hosts 
+
+127.0.0.1   krediagil.com
+127.0.0.1   agentes.krediagil.com
+127.0.0.1   clientes.krediagil.com

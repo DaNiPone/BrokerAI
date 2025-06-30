@@ -1,0 +1,201 @@
+{
+  "name": "Orchestrator Test",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Simulamos los datos que recibiría un webhook\nreturn {\n  json: {\n    requestType: 'newLoan',\n    clientData: {\n      clientId: 1,\n      personalInfo: {\n        firstName: 'Juan',\n        lastName: 'Pérez',\n        email: 'juan@ejemplo.com',\n        phone: '600123456'\n      },\n      financialInfo: {\n        income: 3000,\n        expenses: 1000,\n        creditScore: 700\n      },\n      loanInfo: {\n        amount: 150000,\n        term: 25,\n        purpose: 'vivienda'\n      }\n    }\n  }\n};"
+      },
+      "name": "Simular Datos",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        440,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Validar estructura de datos de entrada\n// Obtener los datos correctamente de $json\nconst data = $json;\n\n// Validar campos requeridos\nconst requiredFields = [\n  'requestType',\n  'clientData'\n];\n\nconst missingFields = requiredFields.filter(field => !data[field]);\nif (missingFields.length > 0) {\n  return {\n    json: {\n      success: false,\n      error: `Campos requeridos faltantes: ${missingFields.join(', ')}`\n    }\n  };\n}\n\n// Validar tipo de petición\nconst validRequestTypes = ['newLoan', 'documentUpload', 'statusCheck', 'complianceCheck', 'opportunityAnalysis', 'riskAssessment', 'bankIntegration'];\nif (!validRequestTypes.includes(data.requestType)) {\n  return {\n    json: {\n      success: false,\n      error: `Tipo de petición inválido. Debe ser uno de: ${validRequestTypes.join(', ')}`\n    }\n  };\n}\n\n// Si todo está bien, continuar\nreturn { json: { success: true, data: data } };"
+      },
+      "name": "Validar Datos",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        640,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"success\"]}}",
+              "operation": "equal",
+              "value2": "true"
+            }
+          ]
+        }
+      },
+      "name": "Verificar Validación",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        840,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Determinar la ruta del flujo según el tipo de solicitud\nconst requestType = $json.data.requestType;\n\n// Añadir ID de transacción para seguimiento\nconst transactionId = `txn-${Date.now()}-${Math.floor(Math.random() * 10000)}`;\n\n// Preparar datos para el routing\nreturn {\n  json: {\n    transactionId: transactionId,\n    requestType: requestType,\n    clientData: $json.data.clientData,\n    timestamp: new Date().toISOString(),\n    routingInfo: determineRoutingInfo(requestType)\n  }\n};\n\n// Función para determinar a qué agente se debe enviar la solicitud\nfunction determineRoutingInfo(type) {\n  switch(type) {\n    case 'newLoan':\n      return {\n        primaryAgent: 'pipeline',\n        secondaryAgents: ['riskAssessment', 'legalCompliance'],\n        webhookPath: '/webhook/pipeline'\n      };\n    case 'documentUpload':\n      return {\n        primaryAgent: 'docGuardian',\n        secondaryAgents: ['legalCompliance'],\n        webhookPath: '/webhook/document'\n      };\n    case 'statusCheck':\n      return {\n        primaryAgent: 'pipeline',\n        secondaryAgents: [],\n        webhookPath: '/webhook/status'\n      };\n    case 'complianceCheck':\n      return {\n        primaryAgent: 'legalCompliance',\n        secondaryAgents: [],\n        webhookPath: '/webhook/compliance'\n      };\n    case 'opportunityAnalysis':\n      return {\n        primaryAgent: 'opportunity',\n        secondaryAgents: [],\n        webhookPath: '/webhook/opportunity'\n      };\n    case 'riskAssessment':\n      return {\n        primaryAgent: 'riskAssessment',\n        secondaryAgents: [],\n        webhookPath: '/webhook/risk'\n      };\n    case 'bankIntegration':\n      return {\n        primaryAgent: 'bankIntegration',\n        secondaryAgents: ['legalCompliance'],\n        webhookPath: '/webhook/bank'\n      };\n    default:\n      return {\n        primaryAgent: 'errorHandler',\n        secondaryAgents: [],\n        webhookPath: '/webhook/error'\n      };\n  }\n}"
+      },
+      "name": "Determinar Ruta",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "message",
+              "value": "=Solicitud procesada correctamente"
+            },
+            {
+              "name": "transactionId",
+              "value": "={{$json.transactionId}}"
+            },
+            {
+              "name": "requestType",
+              "value": "={{$json.requestType}}"
+            },
+            {
+              "name": "primaryAgent",
+              "value": "={{$json.routingInfo.primaryAgent}}"
+            },
+            {
+              "name": "secondaryAgents",
+              "value": "={{$json.routingInfo.secondaryAgents.join(', ')}}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{$json.timestamp}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Preparar Respuesta",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        1240,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "error",
+              "value": "={{$json.error}}"
+            },
+            {
+              "name": "success",
+              "value": "false"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Respuesta Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        1040,
+        440
+      ]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Simular Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simular Datos": {
+      "main": [
+        [
+          {
+            "node": "Validar Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Datos": {
+      "main": [
+        [
+          {
+            "node": "Verificar Validación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Validación": {
+      "main": [
+        [
+          {
+            "node": "Determinar Ruta",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respuesta Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Determinar Ruta": {
+      "main": [
+        [
+          {
+            "node": "Preparar Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+} 

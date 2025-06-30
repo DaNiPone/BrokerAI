@@ -1,0 +1,92 @@
+services:
+  # Base de datos para WordPress
+  db:
+    image: mysql:5.7
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: broker_root_password
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress_password
+    networks:
+      broker_network:
+        aliases:
+          - mysql
+
+  # WordPress único en localhost
+  wordpress:
+    image: wordpress:latest
+    depends_on:
+      - db
+    volumes:
+      - wp_data:/var/www/html
+      - ./n8n-project/wordpress/broker-integration:/var/www/html/wp-content/plugins/broker-integration
+      - ./uploads.ini:/usr/local/etc/php/conf.d/uploads.ini
+    restart: always
+    environment:
+      WORDPRESS_DB_HOST: mysql
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress_password
+      WORDPRESS_DB_NAME: wordpress
+      WORDPRESS_CONFIG_EXTRA: |
+        define('WP_MEMORY_LIMIT', '256M');
+        define('WP_BROKER_WEBHOOK_URL', 'http://n8n-main:5678/webhook/broker-ai/webhook');
+        define('WP_BROKER_WEBHOOK_SECRET', 'broker_webhook_secret');
+    ports:
+      - "8888:80"
+    networks:
+      broker_network:
+        aliases:
+          - wordpress-main
+
+  # n8n para workflows
+  n8n:
+    image: n8nio/n8n:latest
+    restart: always
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    environment:
+      - N8N_HOST=localhost
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_EDITOR_BASE_URL=http://localhost:5678
+      - WEBHOOK_URL=http://localhost:5678
+      - WORDPRESS_URL=http://wordpress-main
+      - WEBHOOK_SECRET=broker_webhook_secret
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_USER_MANAGEMENT_DISABLED=true
+      - EXECUTIONS_PROCESS=main
+      - GENERIC_TIMEZONE=America/Mexico_City
+      - TZ=America/Mexico_City
+    networks:
+      broker_network:
+        aliases:
+          - n8n-main
+
+  # phpMyAdmin para gestión de bases de datos
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    depends_on:
+      - db
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: broker_root_password
+    ports:
+      - "8080:80"
+    networks:
+      - broker_network
+
+volumes:
+  db_data:
+  wp_data:
+  n8n_data:
+
+networks:
+  broker_network:
+    driver: bridge 

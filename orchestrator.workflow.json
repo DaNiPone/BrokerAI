@@ -1,0 +1,324 @@
+{
+  "name": "BrokerAI Orchestrator",
+  "nodes": [
+    {
+      "id": "webhook-entry",
+      "name": "Webhook Entrada",
+      "type": "n8n-nodes-base.webhook",
+      "position": [200, 300],
+      "parameters": {
+        "path": "broker-ai/webhook",
+        "responseMode": "responseNode",
+        "options": {
+          "responseData": "allEntries"
+        }
+      }
+    },
+    {
+      "id": "switch-operation",
+      "name": "Operación Switch",
+      "type": "n8n-nodes-base.switch",
+      "position": [400, 300],
+      "parameters": {
+        "dataType": "string",
+        "value1": "={{ $json.event }}",
+        "rules": {
+          "rules": [
+            {
+              "value2": "new-client",
+              "output": 0
+            },
+            {
+              "value2": "status-update",
+              "output": 1
+            },
+            {
+              "value2": "document-process",
+              "output": 2
+            },
+            {
+              "value2": "form-submission",
+              "output": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "client-registration",
+      "name": "Registro de Cliente",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [600, 200],
+      "parameters": {
+        "url": "={{$env.WORDPRESS_URL}}/wp-json/broker-api/v1/register-client",
+        "method": "POST",
+        "authentication": "headerAuth",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Auth",
+              "value": "={{$env.WEBHOOK_SECRET}}"
+            }
+          ]
+        },
+        "options": {},
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "first_name",
+              "value": "={{ $json.firstName }}"
+            },
+            {
+              "name": "last_name",
+              "value": "={{ $json.lastName }}"
+            },
+            {
+              "name": "email",
+              "value": "={{ $json.email }}"
+            },
+            {
+              "name": "phone",
+              "value": "={{ $json.phone }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "status-update",
+      "name": "Actualización de Estado",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [600, 300],
+      "parameters": {
+        "url": "={{$env.WORDPRESS_URL}}/wp-json/broker-api/v1/status-update",
+        "method": "POST",
+        "authentication": "headerAuth",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Auth",
+              "value": "={{$env.WEBHOOK_SECRET}}"
+            }
+          ]
+        },
+        "options": {},
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "operation_id",
+              "value": "={{ $json.operation_id }}"
+            },
+            {
+              "name": "status",
+              "value": "={{ $json.status }}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $json.timestamp || $now.toISOString() }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "document-process",
+      "name": "Procesamiento de Documentos",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [600, 400],
+      "parameters": {
+        "url": "={{$env.WORDPRESS_URL}}/wp-json/broker-api/v1/upload-document",
+        "method": "POST",
+        "authentication": "headerAuth",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Auth",
+              "value": "={{$env.WEBHOOK_SECRET}}"
+            }
+          ]
+        },
+        "options": {},
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "operation_id",
+              "value": "={{ $json.operation_id }}"
+            },
+            {
+              "name": "document_type",
+              "value": "={{ $json.document_type }}"
+            },
+            {
+              "name": "document",
+              "value": "={{ $json.file_data }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "form-submission",
+      "name": "Envío de Formulario",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [600, 500],
+      "parameters": {
+        "url": "={{$env.WORDPRESS_URL}}/wp-json/broker-api/v1/submit-form",
+        "method": "POST",
+        "authentication": "headerAuth",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Auth",
+              "value": "={{$env.WEBHOOK_SECRET}}"
+            }
+          ]
+        },
+        "options": {},
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "client_id",
+              "value": "={{ $json.client_id }}"
+            },
+            {
+              "name": "form_type",
+              "value": "={{ $json.form_type }}"
+            },
+            {
+              "name": "form_data",
+              "value": "={{ $json.form_data }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "success-response",
+      "name": "Respuesta Exitosa",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [800, 300],
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseData": "firstEntryJson"
+        },
+        "responseData": {
+          "data": "={{ {success: true, message: \"Operación procesada correctamente\"} }}"
+        }
+      }
+    },
+    {
+      "id": "error-response",
+      "name": "Respuesta Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [800, 600],
+      "parameters": {
+        "options": {
+          "responseCode": 400,
+          "responseData": "firstEntryJson"
+        },
+        "responseData": {
+          "data": "={{ {success: false, message: \"Error en la operación\", error: $json.error} }}"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "webhook-entry": {
+      "main": [
+        [
+          {
+            "node": "switch-operation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "switch-operation": {
+      "main": [
+        [
+          {
+            "node": "client-registration",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "status-update",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "document-process",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "form-submission",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "client-registration": {
+      "main": [
+        [
+          {
+            "node": "success-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "status-update": {
+      "main": [
+        [
+          {
+            "node": "success-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "document-process": {
+      "main": [
+        [
+          {
+            "node": "success-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "form-submission": {
+      "main": [
+        [
+          {
+            "node": "success-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "errorWorkflow": "error-response",
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "id": "broker-orchestrator",
+  "tags": ["broker-ai", "integration", "wordpress"]
+} 

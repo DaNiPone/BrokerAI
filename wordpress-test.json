@@ -1,0 +1,115 @@
+{
+  "name": "WordPress Integration Test",
+  "nodes": [
+    {
+      "parameters": {},
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://brokerai-wordpress-main-1/index.php?rest_route=/wp/v2/posts",
+        "options": {}
+      },
+      "name": "Get Posts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://brokerai-wordpress-main-1/index.php?rest_route=/wp/v2/users",
+        "options": {}
+      },
+      "name": "Get Users",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        460,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://brokerai-wordpress-main-1/index.php?rest_route=/broker-api/v1/status-update",
+        "authentication": "basicAuth",
+        "username": "admin",
+        "password": "password",
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "operation_id",
+              "value": "test-operation"
+            },
+            {
+              "name": "status",
+              "value": "testing"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Test Status Update",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "content": "=Successfully connected to WordPress:\n\nPosts count: {{$node[\"Get Posts\"].json.length}}\nUsers count: {{$node[\"Get Users\"].json.length}}\n\nStatus update response: {{$node[\"Test Status Update\"].json}}",
+        "height": 248.79998779296875,
+        "width": 421.5999755859375
+      },
+      "name": "Status",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        940,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Get Posts",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Posts": {
+      "main": [
+        [
+          {
+            "node": "Test Status Update",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+} 

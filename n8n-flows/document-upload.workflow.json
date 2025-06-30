@@ -1,0 +1,282 @@
+{
+  "name": "Procesamiento de Documentos",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook/document-upload",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Validar los datos de entrada\nconst documentData = $input.json.document;\nconst userData = $input.json.user_data;\nconst timestamp = $input.json.timestamp;\n\n// Verificar que existen datos del documento\nif (!documentData || !documentData.url || !documentData.file || !documentData.document_type) {\n  return {\n    valid: false,\n    error: 'Información del documento incompleta'\n  };\n}\n\n// Verificar tipo de archivo permitido\nconst allowedMimeTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];\nif (!allowedMimeTypes.includes(documentData.type)) {\n  return {\n    valid: false,\n    error: 'Tipo de archivo no permitido. Solo se permiten PDF, JPG o PNG.'\n  };\n}\n\n// Extraer extensión del archivo\nconst fileExtension = documentData.file.split('.').pop().toLowerCase();\nconst allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png'];\nif (!allowedExtensions.includes(fileExtension)) {\n  return {\n    valid: false,\n    error: `Extensión de archivo no permitida: ${fileExtension}. Solo se permiten PDF, JPG o PNG.`\n  };\n}\n\n// Todo OK\nreturn {\n  valid: true,\n  documentData,\n  userData,\n  timestamp,\n  source: $input.json.source,\n  form_id: $input.json.form_id,\n  fileExtension\n};"
+      },
+      "name": "Validar Documento",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "¿Documento Válido?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "table": "documentos",
+        "operation": "insert",
+        "columns": "nombre_archivo, ruta_archivo, tipo_documento, descripcion, fecha_subida, id_usuario, estado, mime_type",
+        "values": "={{ $json.documentData.file.split('/').pop() }},={{ $json.documentData.file }},={{ $json.documentData.document_type }},={{ $json.documentData.description || '' }},={{ $json.timestamp }},={{ $json.userData.id || 0 }},'pendiente',={{ $json.documentData.type }}"
+      },
+      "name": "Guardar en Base de Datos",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [
+        900,
+        180
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "PostgreSQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "success",
+              "value": "true"
+            },
+            {
+              "name": "message",
+              "value": "Documento procesado correctamente"
+            },
+            {
+              "name": "document_id",
+              "value": "={{ $json.insertId || $json.id || $json.lastInsertRowid }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Respuesta Exitosa",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "success",
+              "value": "false"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.error }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Respuesta Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        900,
+        420
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "name": "Responder al Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1300,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Procesar el documento según su tipo\nconst docType = $input.json.documentData.document_type;\nconst documentId = $input.json.insertId || $input.json.id || $input.json.lastInsertRowid;\nconst filePath = $input.json.documentData.file;\nconst fileUrl = $input.json.documentData.url;\nconst mimeType = $input.json.documentData.type;\n\n// Clasificar el documento según su tipo\nlet classification = '';\nlet priority = 'normal';\nlet nextAction = '';\n\nswitch (docType) {\n  case 'id':\n    classification = 'Identificación';\n    priority = 'alta';\n    nextAction = 'verificar_identidad';\n    break;\n  case 'income':\n    classification = 'Comprobante de ingresos';\n    priority = 'alta';\n    nextAction = 'analisis_financiero';\n    break;\n  case 'tax':\n    classification = 'Declaración de impuestos';\n    priority = 'media';\n    nextAction = 'analisis_fiscal';\n    break;\n  case 'bank':\n    classification = 'Extracto bancario';\n    priority = 'media';\n    nextAction = 'analisis_financiero';\n    break;\n  case 'property':\n    classification = 'Documentación de propiedad';\n    priority = 'alta';\n    nextAction = 'tasacion';\n    break;\n  default:\n    classification = 'Otro';\n    priority = 'baja';\n    nextAction = 'revision_general';\n}\n\nreturn {\n  documentId,\n  filePath,\n  fileUrl,\n  mimeType,\n  docType,\n  classification,\n  priority,\n  nextAction,\n  needsReview: true,\n  processed: true\n};"
+      },
+      "name": "Clasificar Documento",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        1100,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://hooks.slack.com/services/TXXXXXXXX/BXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"text\": \"Nuevo documento subido\",\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"📄 Nuevo documento recibido\",\n        \"emoji\": true\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*Tipo:*\\n{{ $json.classification }}\"\n        },\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*Prioridad:*\\n{{ $json.priority }}\"\n        },\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*Cliente:*\\n{{ $json.userData.name || 'Cliente Web' }}\"\n        },\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*Fecha:*\\n{{ $json.timestamp }}\"\n        }\n      ]\n    },\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Acción requerida:*\\n{{ $json.nextAction }}\"\n      }\n    },\n    {\n      \"type\": \"actions\",\n      \"elements\": [\n        {\n          \"type\": \"button\",\n          \"text\": {\n            \"type\": \"plain_text\",\n            \"text\": \"Ver Documento\",\n            \"emoji\": true\n          },\n          \"url\": \"{{ $json.fileUrl }}\"\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "name": "Notificar Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1300,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "to": "={{ $json.userData.email }}",
+        "subject": "Documento recibido - KrediAgil",
+        "text": "Estimado/a {{ $json.userData.name || 'Cliente' }},\n\nHemos recibido correctamente su documento \"{{ $json.classification }}\".\n\nNuestro equipo revisará el documento a la brevedad y le informaremos si necesitamos información adicional.\n\nSaludos cordiales,\nEquipo KrediAgil",
+        "options": {
+          "replyTo": "documentos@krediagil.com"
+        }
+      },
+      "name": "Enviar Confirmación",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1300,
+        180
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validar Documento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Documento": {
+      "main": [
+        [
+          {
+            "node": "¿Documento Válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Documento Válido?": {
+      "main": [
+        [
+          {
+            "node": "Guardar en Base de Datos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respuesta Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar en Base de Datos": {
+      "main": [
+        [
+          {
+            "node": "Respuesta Exitosa",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Clasificar Documento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respuesta Exitosa": {
+      "main": [
+        [
+          {
+            "node": "Responder al Webhook",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enviar Confirmación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respuesta Error": {
+      "main": [
+        [
+          {
+            "node": "Responder al Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clasificar Documento": {
+      "main": [
+        [
+          {
+            "node": "Notificar Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+} 

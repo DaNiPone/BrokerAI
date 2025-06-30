@@ -1,0 +1,297 @@
+[
+    {
+        "key": "group_client_fields",
+        "title": "Datos del Cliente",
+        "fields": [
+            {
+                "key": "field_first_name",
+                "label": "Nombre",
+                "name": "first_name",
+                "type": "text",
+                "required": 1
+            },
+            {
+                "key": "field_last_name",
+                "label": "Apellidos",
+                "name": "last_name",
+                "type": "text",
+                "required": 1
+            },
+            {
+                "key": "field_email",
+                "label": "Email",
+                "name": "email",
+                "type": "email",
+                "required": 1
+            },
+            {
+                "key": "field_phone",
+                "label": "Teléfono",
+                "name": "phone",
+                "type": "text",
+                "required": 0
+            },
+            {
+                "key": "field_registration_date",
+                "label": "Fecha de Registro",
+                "name": "registration_date",
+                "type": "date_time_picker",
+                "required": 0,
+                "display_format": "d/m/Y H:i:s",
+                "return_format": "Y-m-d H:i:s",
+                "readonly": 1
+            },
+            {
+                "key": "field_access_token",
+                "label": "Token de Acceso",
+                "name": "access_token",
+                "type": "text",
+                "required": 0,
+                "readonly": 1
+            }
+        ],
+        "location": [
+            [
+                {
+                    "param": "post_type",
+                    "operator": "==",
+                    "value": "client"
+                }
+            ]
+        ],
+        "menu_order": 0,
+        "position": "normal",
+        "style": "default",
+        "label_placement": "top",
+        "instruction_placement": "label",
+        "hide_on_screen": ""
+    },
+    {
+        "key": "group_operation_fields",
+        "title": "Datos de la Operación",
+        "fields": [
+            {
+                "key": "field_operation_id",
+                "label": "ID de Operación",
+                "name": "operation_id",
+                "type": "text",
+                "required": 1,
+                "readonly": 1
+            },
+            {
+                "key": "field_client_id",
+                "label": "Cliente",
+                "name": "client_id",
+                "type": "post_object",
+                "required": 1,
+                "post_type": [
+                    "client"
+                ],
+                "return_format": "id",
+                "ui": 1
+            },
+            {
+                "key": "field_status",
+                "label": "Estado",
+                "name": "status",
+                "type": "select",
+                "required": 1,
+                "choices": {
+                    "Nuevo Prospecto": "Nuevo Prospecto",
+                    "Evaluación Inicial - Viable": "Evaluación Inicial - Viable",
+                    "Evaluación Inicial - No Viable": "Evaluación Inicial - No Viable",
+                    "Documento Recibido: DNI": "Documento Recibido: DNI",
+                    "Documento Recibido: Nómina": "Documento Recibido: Nómina",
+                    "Documento Recibido: Contrato": "Documento Recibido: Contrato",
+                    "Documentación Completa": "Documentación Completa",
+                    "Análisis en Curso": "Análisis en Curso",
+                    "Oferta Preparada": "Oferta Preparada",
+                    "Oferta Enviada": "Oferta Enviada",
+                    "Oferta Aceptada": "Oferta Aceptada",
+                    "Oferta Rechazada": "Oferta Rechazada",
+                    "En Tramitación": "En Tramitación",
+                    "Aprobado": "Aprobado",
+                    "Rechazado": "Rechazado",
+                    "Completado": "Completado",
+                    "Cancelado": "Cancelado"
+                },
+                "default_value": "Nuevo Prospecto",
+                "return_format": "value",
+                "multiple": 0,
+                "allow_null": 0
+            },
+            {
+                "key": "field_creation_date",
+                "label": "Fecha de Creación",
+                "name": "creation_date",
+                "type": "date_time_picker",
+                "required": 0,
+                "display_format": "d/m/Y H:i:s",
+                "return_format": "Y-m-d H:i:s",
+                "readonly": 1
+            },
+            {
+                "key": "field_last_updated",
+                "label": "Última Actualización",
+                "name": "last_updated",
+                "type": "date_time_picker",
+                "required": 0,
+                "display_format": "d/m/Y H:i:s",
+                "return_format": "Y-m-d H:i:s",
+                "readonly": 1
+            },
+            {
+                "key": "field_status_history",
+                "label": "Historial de Estados",
+                "name": "status_history",
+                "type": "repeater",
+                "required": 0,
+                "readonly": 1,
+                "layout": "table",
+                "button_label": "Añadir Estado",
+                "sub_fields": [
+                    {
+                        "key": "field_history_status",
+                        "label": "Estado",
+                        "name": "status",
+                        "type": "text",
+                        "required": 1
+                    },
+                    {
+                        "key": "field_history_timestamp",
+                        "label": "Fecha",
+                        "name": "timestamp",
+                        "type": "date_time_picker",
+                        "required": 1,
+                        "display_format": "d/m/Y H:i:s",
+                        "return_format": "Y-m-d H:i:s"
+                    }
+                ]
+            }
+        ],
+        "location": [
+            [
+                {
+                    "param": "post_type",
+                    "operator": "==",
+                    "value": "operation"
+                }
+            ]
+        ],
+        "menu_order": 0,
+        "position": "normal",
+        "style": "default",
+        "label_placement": "top",
+        "instruction_placement": "label",
+        "hide_on_screen": ""
+    },
+    {
+        "key": "group_document_fields",
+        "title": "Datos del Documento",
+        "fields": [
+            {
+                "key": "field_document_type",
+                "label": "Tipo de Documento",
+                "name": "document_type",
+                "type": "select",
+                "required": 1,
+                "choices": {
+                    "DNI": "DNI/NIE",
+                    "Nomina": "Nómina",
+                    "Contrato": "Contrato Laboral",
+                    "IRPF": "Declaración IRPF",
+                    "Recibo": "Recibo Hipoteca/Alquiler",
+                    "Extracto": "Extracto Bancario",
+                    "Tasacion": "Tasación",
+                    "Nota Simple": "Nota Simple",
+                    "Escritura": "Escritura",
+                    "Otros": "Otros"
+                },
+                "default_value": "DNI",
+                "return_format": "value",
+                "multiple": 0,
+                "allow_null": 0
+            },
+            {
+                "key": "field_operation_id_doc",
+                "label": "Operación",
+                "name": "operation_id",
+                "type": "text",
+                "required": 1
+            },
+            {
+                "key": "field_document_file",
+                "label": "Archivo",
+                "name": "document_file",
+                "type": "file",
+                "required": 1,
+                "mime_types": "pdf, jpg, jpeg, png, doc, docx"
+            },
+            {
+                "key": "field_file_url",
+                "label": "URL del Archivo",
+                "name": "file_url",
+                "type": "url",
+                "required": 0,
+                "readonly": 1
+            },
+            {
+                "key": "field_file_path",
+                "label": "Ruta del Archivo",
+                "name": "file_path",
+                "type": "text",
+                "required": 0,
+                "readonly": 1
+            },
+            {
+                "key": "field_attachment_id",
+                "label": "ID de Adjunto",
+                "name": "attachment_id",
+                "type": "number",
+                "required": 0,
+                "readonly": 1
+            },
+            {
+                "key": "field_upload_date",
+                "label": "Fecha de Subida",
+                "name": "upload_date",
+                "type": "date_time_picker",
+                "required": 0,
+                "display_format": "d/m/Y H:i:s",
+                "return_format": "Y-m-d H:i:s",
+                "readonly": 1
+            },
+            {
+                "key": "field_processed",
+                "label": "Procesado",
+                "name": "processed",
+                "type": "true_false",
+                "required": 0,
+                "ui": 1
+            },
+            {
+                "key": "field_processing_result",
+                "label": "Resultado del Procesamiento",
+                "name": "processing_result",
+                "type": "textarea",
+                "required": 0,
+                "readonly": 1
+            }
+        ],
+        "location": [
+            [
+                {
+                    "param": "post_type",
+                    "operator": "==",
+                    "value": "document"
+                }
+            ]
+        ],
+        "menu_order": 0,
+        "position": "normal",
+        "style": "default",
+        "label_placement": "top",
+        "instruction_placement": "label",
+        "hide_on_screen": ""
+    }
+] 

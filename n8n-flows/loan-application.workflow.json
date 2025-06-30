@@ -1,0 +1,290 @@
+{
+  "name": "Solicitud de Préstamo",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook/loan-application",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Validar los datos de entrada\nconst formData = $input.json.form_data;\nconst userData = $input.json.user_data;\nconst timestamp = $input.json.timestamp;\n\n// Verificar campos obligatorios\nconst requiredFields = ['nombre', 'apellidos', 'email', 'telefono', 'importe', 'plazo'];\nconst missingFields = [];\n\nfor (const field of requiredFields) {\n  if (!formData[field]) {\n    missingFields.push(field);\n  }\n}\n\nif (missingFields.length > 0) {\n  return {\n    valid: false,\n    missingFields,\n    error: `Faltan campos obligatorios: ${missingFields.join(', ')}`\n  };\n}\n\n// Validar formato de email\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nif (!emailRegex.test(formData.email)) {\n  return {\n    valid: false,\n    error: 'El formato del email no es válido'\n  };\n}\n\n// Validar formato de teléfono (simplificado)\nconst phoneRegex = /^[0-9]{9,15}$/;\nif (!phoneRegex.test(formData.telefono.replace(/\\s+/g, ''))) {\n  return {\n    valid: false,\n    error: 'El formato del teléfono no es válido'\n  };\n}\n\n// Validar importe\nconst importe = parseFloat(formData.importe);\nif (isNaN(importe) || importe <= 0) {\n  return {\n    valid: false,\n    error: 'El importe debe ser un número positivo'\n  };\n}\n\n// Validar plazo\nconst plazo = parseInt(formData.plazo);\nif (isNaN(plazo) || plazo <= 0) {\n  return {\n    valid: false,\n    error: 'El plazo debe ser un número entero positivo'\n  };\n}\n\n// Todo OK\nreturn {\n  valid: true,\n  formData,\n  userData,\n  timestamp,\n  source: $input.json.source,\n  form_id: $input.json.form_id\n};"
+      },
+      "name": "Validar Datos",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        460,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.valid }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "¿Datos Válidos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "success",
+              "value": "true"
+            },
+            {
+              "name": "message",
+              "value": "Solicitud procesada correctamente"
+            },
+            {
+              "name": "application_id",
+              "value": "={{ $json.application_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Respuesta Exitosa",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        920,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "success",
+              "value": "false"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.error }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Respuesta Error",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        920,
+        380
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://hooks.slack.com/services/TXXXXXXXX/BXXXXXXXX/XXXXXXXXXXXXXXXXXXXXXXXX",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"text\": \"Nueva solicitud de préstamo recibida\",\n  \"blocks\": [\n    {\n      \"type\": \"header\",\n      \"text\": {\n        \"type\": \"plain_text\",\n        \"text\": \"🏦 Nueva solicitud de préstamo\",\n        \"emoji\": true\n      }\n    },\n    {\n      \"type\": \"section\",\n      \"fields\": [\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*Cliente:*\\n{{ $json.formData.nombre }} {{ $json.formData.apellidos }}\"\n        },\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*Importe:*\\n{{ $json.formData.importe }}€\"\n        },\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*Plazo:*\\n{{ $json.formData.plazo }} meses\"\n        },\n        {\n          \"type\": \"mrkdwn\",\n          \"text\": \"*Fecha:*\\n{{ $json.timestamp }}\"\n        }\n      ]\n    },\n    {\n      \"type\": \"section\",\n      \"text\": {\n        \"type\": \"mrkdwn\",\n        \"text\": \"*Contacto:*\\n📱 {{ $json.formData.telefono }}\\n📧 {{ $json.formData.email }}\"\n      }\n    },\n    {\n      \"type\": \"actions\",\n      \"elements\": [\n        {\n          \"type\": \"button\",\n          \"text\": {\n            \"type\": \"plain_text\",\n            \"text\": \"Ver Detalles\",\n            \"emoji\": true\n          },\n          \"url\": \"https://agentes.krediagil.com/solicitudes/{{ $json.application_id }}\"\n        }\n      ]\n    }\n  ]\n}",
+        "options": {}
+      },
+      "name": "Notificar Slack",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1120,
+        140
+      ]
+    },
+    {
+      "parameters": {
+        "to": "={{ $json.userData.email || $json.formData.email }}",
+        "subject": "Solicitud de préstamo recibida - KrediAgil",
+        "text": "Estimado/a {{ $json.formData.nombre }} {{ $json.formData.apellidos }},\n\nGracias por su solicitud de préstamo hipotecario con KrediAgil. Hemos registrado correctamente su solicitud con los siguientes detalles:\n\n- Importe solicitado: {{ $json.formData.importe }}€\n- Plazo: {{ $json.formData.plazo }} meses\n\nUn asesor hipotecario se pondrá en contacto con usted en las próximas 24-48 horas para continuar con el proceso.\n\nSi tiene alguna duda, no dude en ponerse en contacto con nosotros.\n\nSaludos cordiales,\nEquipo KrediAgil",
+        "options": {
+          "replyTo": "info@krediagil.com"
+        }
+      },
+      "name": "Enviar Confirmación",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1120,
+        240
+      ]
+    },
+    {
+      "parameters": {
+        "table": "solicitudes_prestamo",
+        "operation": "insert",
+        "columns": "nombre, apellidos, email, telefono, importe, plazo, comentarios, fecha_solicitud, estado, id_usuario",
+        "values": "={{ $json.formData.nombre }},={{ $json.formData.apellidos }},={{ $json.formData.email }},={{ $json.formData.telefono }},={{ $json.formData.importe }},={{ $json.formData.plazo }},={{ $json.formData.comentarios || '' }},={{ $json.timestamp }},'nueva',={{ $json.userData.id || 0 }}"
+      },
+      "name": "Guardar en Base de Datos",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.1,
+      "position": [
+        740,
+        120
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "1",
+          "name": "PostgreSQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "application_id",
+              "value": "={{ $json.insertId || $json.id || $json.lastInsertRowid }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Preparar Datos",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [
+        920,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "name": "Responder al Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1160,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validar Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Datos": {
+      "main": [
+        [
+          {
+            "node": "¿Datos Válidos?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Datos Válidos?": {
+      "main": [
+        [
+          {
+            "node": "Guardar en Base de Datos",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respuesta Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respuesta Exitosa": {
+      "main": [
+        [
+          {
+            "node": "Responder al Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respuesta Error": {
+      "main": [
+        [
+          {
+            "node": "Responder al Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar en Base de Datos": {
+      "main": [
+        [
+          {
+            "node": "Preparar Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Preparar Datos": {
+      "main": [
+        [
+          {
+            "node": "Notificar Slack",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enviar Confirmación",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Respuesta Exitosa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+} 

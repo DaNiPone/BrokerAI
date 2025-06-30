@@ -1,0 +1,142 @@
+{
+  "name": "Test de Conexión BrokerAI",
+  "nodes": [
+    {
+      "id": "webhook-test",
+      "name": "Webhook Test",
+      "type": "n8n-nodes-base.webhook",
+      "position": [200, 300],
+      "parameters": {
+        "path": "test-connection",
+        "responseMode": "responseNode",
+        "options": {
+          "responseData": "allEntries"
+        }
+      }
+    },
+    {
+      "id": "wordpress-test",
+      "name": "Prueba WordPress API",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [400, 300],
+      "parameters": {
+        "url": "={{$env.WORDPRESS_URL || 'http://wordpress-main'}}/wp-json/wp/v2/posts?per_page=1",
+        "method": "GET",
+        "authentication": "none",
+        "options": {}
+      }
+    },
+    {
+      "id": "wordpress-webhook-test",
+      "name": "Prueba Webhook WordPress",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [400, 450],
+      "parameters": {
+        "url": "={{$env.WORDPRESS_URL || 'http://wordpress-main'}}/wp-json/broker-api/v1/webhook",
+        "method": "POST",
+        "authentication": "headerAuth",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-Webhook-Auth",
+              "value": "={{ $env.WEBHOOK_SECRET || 'broker_webhook_secret' }}"
+            }
+          ]
+        },
+        "options": {},
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "event",
+              "value": "test-connection"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now.toISOString() }}"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "format-response",
+      "name": "Formatear Respuesta",
+      "type": "n8n-nodes-base.function",
+      "position": [600, 300],
+      "parameters": {
+        "functionCode": "// Verificar respuesta de WordPress API\nconst wp_api_ok = $input.all()[0].statusCode >= 200 && $input.all()[0].statusCode < 300;\nconst posts_count = wp_api_ok ? $input.all()[0].json.length : 0;\n\n// Verificar respuesta de WordPress Webhook\nconst wp_webhook_ok = $input.all()[1].statusCode >= 200 && $input.all()[1].statusCode < 300;\n\n// Preparar resultados\nconst results = {\n  success: wp_api_ok && wp_webhook_ok,\n  timestamp: new Date().toISOString(),\n  tests: {\n    wordpress_api: {\n      success: wp_api_ok,\n      status_code: $input.all()[0].statusCode,\n      posts_count: posts_count\n    },\n    wordpress_webhook: {\n      success: wp_webhook_ok,\n      status_code: $input.all()[1].statusCode,\n      response: $input.all()[1].json\n    }\n  },\n  message: wp_api_ok && wp_webhook_ok \n    ? \"¡Conexión exitosa! La integración entre n8n y WordPress funciona correctamente.\"\n    : \"Error de conexión. Revisa los detalles de las pruebas para más información.\"\n};\n\nreturn [{json: results}];"
+      }
+    },
+    {
+      "id": "respond-webhook",
+      "name": "Responder al Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "position": [800, 300],
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseData": "firstEntryJson"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "webhook-test": {
+      "main": [
+        [
+          {
+            "node": "wordpress-test",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "wordpress-webhook-test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wordpress-test": {
+      "main": [
+        [
+          {
+            "node": "format-response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "wordpress-webhook-test": {
+      "main": [
+        [
+          {
+            "node": "format-response",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "format-response": {
+      "main": [
+        [
+          {
+            "node": "respond-webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "saveExecutionProgress": true,
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "id": "test-connection",
+  "tags": ["broker-ai", "test", "integration"]
+} 
